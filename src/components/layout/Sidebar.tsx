@@ -47,7 +47,7 @@ function DesktopRail() {
     <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[92px] border-r border-[rgba(15,23,42,0.06)] bg-white/78 backdrop-blur-2xl md:flex md:flex-col">
       <div className="flex justify-center border-b border-[rgba(15,23,42,0.06)] px-3 py-4">
         <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-[rgba(15,23,42,0.08)] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
-          <img src="/image.png" alt="Linergy" className="h-full w-full object-contain" />
+          <img src="/logo_web.png" alt="Linergy" className="h-full w-full object-contain" />
         </div>
       </div>
 

@@ -124,7 +124,7 @@ function MobileSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="border-b border-[rgba(15,23,42,0.06)] px-4 py-5">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-[rgba(15,23,42,0.08)] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
-            <img src="/image.png" alt="Linergy" className="h-full w-full object-contain" />
+            <img src="/logo_web.png" alt="Linergy" className="h-full w-full object-contain" />
           </div>
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold tracking-[-0.02em] text-[#0f172a]">Linergy</h1>

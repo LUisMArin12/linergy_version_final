@@ -90,7 +90,7 @@ export default function WelcomePage() {
             <div className="surface-panel-elevated overflow-hidden p-4 sm:p-5">
               <div className="rounded-[24px] border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.04))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
                 <img
-                  src="/inicio.png"
+                  src="/logo_web.png"
                   alt="Vista del sistema Linergy"
                   className="h-auto max-h-[470px] w-full rounded-[20px] border border-[rgba(15,23,42,0.06)] object-cover shadow-[0_24px_60px_rgba(15,23,42,0.14)]"
                 />

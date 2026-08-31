@@ -78,7 +78,7 @@ END $$;
 -- Internal geometry/import routines used by Edge Functions through service_role.
 -- -----------------------------------------------------------------------------
 GRANT EXECUTE ON FUNCTION public.get_point_coords(geometry) TO service_role;
-GRANT EXECUTE ON FUNCTION public.interpolate_point(geometry, double precision, double precision, double precision) TO service_role;
+GRANT EXECUTE ON FUNCTION public.interpolate_point(geometry, geometry, double precision, double precision, double precision) TO service_role;
 GRANT EXECUTE ON FUNCTION public.interpolate_line_point(geometry, double precision) TO service_role;
 
 DO $$

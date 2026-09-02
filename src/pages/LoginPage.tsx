@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogIn, UserPlus, Shield, ChevronLeft } from 'lucide-react';
+import { LogIn, UserPlus, Shield, ChevronLeft, MailCheck, RefreshCw } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,11 +9,23 @@ import { useToast } from '../contexts/ToastContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resendSignUpConfirmation } = useAuth();
   const { showToast } = useToast();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timer = window.setInterval(() => {
+      setResendCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,12 +36,35 @@ export default function LoginPage() {
         await signIn(formData.email, formData.password);
         navigate('/dashboard/mapa', { state: { fromLogin: true } });
       } else {
-        await signUp(formData.email, formData.password);
-        showToast('Cuenta creada exitosamente', 'success');
-        navigate('/dashboard/mapa', { state: { fromLogin: true } });
+        const result = await signUp(formData.email, formData.password);
+
+        if (result.emailConfirmationRequired) {
+          setPendingEmail(formData.email.trim());
+          setResendCooldown(60);
+          showToast('Te enviamos un enlace para confirmar tu correo', 'success');
+        } else {
+          showToast('Cuenta creada exitosamente', 'success');
+          navigate('/dashboard/mapa', { state: { fromLogin: true } });
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error en la autenticación';
+      showToast(message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!pendingEmail || resendCooldown > 0) return;
+
+    setLoading(true);
+    try {
+      await resendSignUpConfirmation(pendingEmail);
+      setResendCooldown(60);
+      showToast('Correo de confirmación reenviado', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo reenviar el correo';
       showToast(message, 'error');
     } finally {
       setLoading(false);
@@ -77,82 +112,128 @@ export default function LoginPage() {
                   <h2 className="mt-2 text-[2rem] font-semibold tracking-[-0.03em]">LINERGY</h2>
                 </div>
 
-                <div className="mt-4 mb-4 flex rounded-full border border-[rgba(15,23,42,0.08)] bg-[rgba(15,23,42,0.03)] p-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsLogin(true)}
-                    className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition-all ${isLogin ? 'bg-white text-[#0f172a] shadow-[0_8px_18px_rgba(15,23,42,0.08)]' : 'text-[#64748b]'}`}
-                  >
-                    Iniciar sesión
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsLogin(false)}
-                    className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition-all ${!isLogin ? 'bg-white text-[#0f172a] shadow-[0_8px_18px_rgba(15,23,42,0.08)]' : 'text-[#64748b]'}`}
-                  >
-                    Crear cuenta
-                  </button>
-                </div>
+                {!pendingEmail && (
+                  <div className="mt-4 mb-4 flex rounded-full border border-[rgba(15,23,42,0.08)] bg-[rgba(15,23,42,0.03)] p-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsLogin(true)}
+                      className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition-all ${isLogin ? 'bg-white text-[#0f172a] shadow-[0_8px_18px_rgba(15,23,42,0.08)]' : 'text-[#64748b]'}`}
+                    >
+                      Iniciar sesión
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsLogin(false)}
+                      className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition-all ${!isLogin ? 'bg-white text-[#0f172a] shadow-[0_8px_18px_rgba(15,23,42,0.08)]' : 'text-[#64748b]'}`}
+                    >
+                      Crear cuenta
+                    </button>
+                  </div>
+                )}
 
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={isLogin ? 'login' : 'signup'}
+                    key={pendingEmail ? 'pending-email' : isLogin ? 'login' : 'signup'}
                     initial={{ opacity: 0, y: 10, scale: 0.985 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.985 }}
                     transition={{ duration: 0.18 }}
                   >
-                    <div className="mb-5 text-center">
-                      <h2 className="text-[1.95rem] font-semibold tracking-[-0.03em] text-[#0f172a]">
-                        {isLogin ? 'Bienvenido de nuevo' : 'Crear cuenta nueva'}
-                      </h2>
-                      <p className="mt-1.5 text-sm leading-6 text-[#64748b]">
-                        {isLogin ? 'Ingresa tus credenciales para continuar.' : 'Completa el registro para acceder al sistema.'}
-                      </p>
-                    </div>
+                    {pendingEmail ? (
+                      <div className="text-center" role="status" aria-live="polite">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(21,122,90,0.1)] text-[#157A5A]">
+                          <MailCheck className="h-8 w-8" />
+                        </div>
+                        <h2 className="mt-5 text-[1.95rem] font-semibold tracking-[-0.03em] text-[#0f172a]">
+                          Revisa tu correo
+                        </h2>
+                        <p className="mt-2 text-sm leading-6 text-[#64748b]">
+                          Enviamos un enlace de confirmación a <span className="font-semibold text-[#334155]">{pendingEmail}</span>.
+                          Debes confirmarlo antes de ingresar.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="lg"
+                          icon={<RefreshCw className="h-5 w-5" />}
+                          className="mt-6 w-full"
+                          disabled={loading || resendCooldown > 0}
+                          onClick={handleResendConfirmation}
+                        >
+                          {loading
+                            ? 'Reenviando...'
+                            : resendCooldown > 0
+                              ? `Reenviar en ${resendCooldown}s`
+                              : 'Reenviar correo'}
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingEmail(null);
+                            setIsLogin(true);
+                          }}
+                          className="mt-4 text-sm font-medium text-[#157A5A] transition-colors hover:text-[#0b3d2e]"
+                        >
+                          Volver a iniciar sesión
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mb-5 text-center">
+                          <h2 className="text-[1.95rem] font-semibold tracking-[-0.03em] text-[#0f172a]">
+                            {isLogin ? 'Bienvenido de nuevo' : 'Crear cuenta nueva'}
+                          </h2>
+                          <p className="mt-1.5 text-sm leading-6 text-[#64748b]">
+                            {isLogin ? 'Ingresa tus credenciales para continuar.' : 'Completa el registro para acceder al sistema.'}
+                          </p>
+                        </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <Input
-                        label="Correo electrónico"
-                        type="email"
-                        placeholder="usuario@linergy.app"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        required
-                      />
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                          <Input
+                            label="Correo electrónico"
+                            type="email"
+                            placeholder="usuario@linergy.app"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            required
+                          />
 
-                      <Input
-                        label="Contraseña"
-                        type="password"
-                        placeholder="••••••••"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        required
-                      />
+                          <Input
+                            label="Contraseña"
+                            type="password"
+                            placeholder="••••••••"
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            required
+                          />
 
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        size="lg"
-                        icon={isLogin ? <LogIn className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
-                        className="mt-1 w-full"
-                        disabled={loading}
-                      >
-                        {loading ? 'Procesando...' : isLogin ? 'Iniciar sesión' : 'Crear cuenta'}
-                      </Button>
-                    </form>
+                          <Button
+                            type="submit"
+                            variant="primary"
+                            size="lg"
+                            icon={isLogin ? <LogIn className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+                            className="mt-1 w-full"
+                            disabled={loading}
+                          >
+                            {loading ? 'Procesando...' : isLogin ? 'Iniciar sesión' : 'Crear cuenta'}
+                          </Button>
+                        </form>
+                      </>
+                    )}
                   </motion.div>
                 </AnimatePresence>
 
-                <div className="mt-5 text-center">
-                  <button
-                    type="button"
-                    onClick={() => setIsLogin(!isLogin)}
-                    className="text-sm font-medium text-[#157A5A] transition-colors hover:text-[#0b3d2e]"
-                  >
-                    {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
-                  </button>
-                </div>
+                {!pendingEmail && (
+                  <div className="mt-5 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsLogin(!isLogin)}
+                      className="text-sm font-medium text-[#157A5A] transition-colors hover:text-[#0b3d2e]"
+                    >
+                      {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
+                    </button>
+                  </div>
+                )}
 
                 <div className="premium-divider my-5" />
 

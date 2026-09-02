@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
 import WelcomePage from './pages/WelcomePage';
 import LoginPage from './pages/LoginPage';
+import AuthConfirmPage from './pages/AuthConfirmPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -37,6 +38,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<WelcomePage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/confirm" element={<AuthConfirmPage />} />
 
               <Route
                 path="/dashboard"

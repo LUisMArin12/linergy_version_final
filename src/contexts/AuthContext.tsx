@@ -12,9 +12,18 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<SignUpResult>;
+  resendSignUpConfirmation: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+}
+
+interface SignUpResult {
+  emailConfirmationRequired: boolean;
+}
+
+function getEmailConfirmationUrl() {
+  return new URL('/auth/confirm', window.location.origin).toString();
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -127,9 +136,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
         password,
+        options: {
+          emailRedirectTo: getEmailConfirmationUrl(),
+        },
+      });
+      if (error) throw error;
+
+      return {
+        emailConfirmationRequired: data.session === null,
+      };
+    } catch (error) {
+      await handleAuthError(error);
+      throw error;
+    }
+  };
+
+  const resendSignUpConfirmation = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: {
+          emailRedirectTo: getEmailConfirmationUrl(),
+        },
       });
       if (error) throw error;
     } catch (error) {
@@ -159,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin: profile?.role === 'admin',
     signIn,
     signUp,
+    resendSignUpConfirmation,
     signOut,
     refreshProfile,
   };

@@ -2,12 +2,60 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT extensions.plan(25);
+SELECT extensions.plan(31);
 
 -- Object-level access: signed-out clients cannot reach application data or RPCs.
 SELECT extensions.ok(
   NOT has_schema_privilege('anon', 'public', 'USAGE'),
   'anon cannot use the public schema'
+);
+
+SELECT extensions.ok(
+  has_schema_privilege('anon', 'linergy_keepalive', 'USAGE'),
+  'anon can use only the isolated keepalive schema'
+);
+
+SELECT extensions.ok(
+  has_function_privilege(
+    'anon',
+    'linergy_keepalive.ping()',
+    'EXECUTE'
+  ),
+  'anon can execute the data-free keepalive RPC'
+);
+
+SELECT extensions.ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'linergy_keepalive.ping()',
+    'EXECUTE'
+  ),
+  'authenticated does not receive unnecessary keepalive privileges'
+);
+
+SELECT extensions.ok(
+  NOT (
+    SELECT procedure.prosecdef
+    FROM pg_proc AS procedure
+    WHERE procedure.oid = 'linergy_keepalive.ping()'::regprocedure
+  ),
+  'the keepalive RPC is security invoker'
+);
+
+SELECT extensions.is(
+  (
+    SELECT array_to_string(procedure.proconfig, ',')
+    FROM pg_proc AS procedure
+    WHERE procedure.oid = 'linergy_keepalive.ping()'::regprocedure
+  ),
+  'search_path=pg_catalog',
+  'the keepalive RPC has a fixed minimal search_path'
+);
+
+SELECT extensions.is(
+  linergy_keepalive.ping(),
+  true,
+  'the keepalive RPC performs its minimal database operation'
 );
 
 SELECT extensions.ok(

@@ -4,15 +4,8 @@ declare const Netlify: {
   };
 };
 
-const KEEPALIVE_QUERY = 'query LinergyKeepalive { __typename }';
+const KEEPALIVE_SCHEMA = 'linergy_keepalive';
 const REQUEST_TIMEOUT_MS = 10_000;
-
-type GraphqlResponse = {
-  data?: {
-    __typename?: string;
-  };
-  errors?: unknown[];
-};
 
 function requiredEnvironmentVariable(name: string): string {
   const value = Netlify.env.get(name);
@@ -34,15 +27,16 @@ export async function runSupabaseKeepalive(
 
   try {
     const response = await fetcher(
-      `${supabaseUrl.replace(/\/$/, '')}/graphql/v1`,
+      `${supabaseUrl.replace(/\/$/, '')}/rest/v1/rpc/ping`,
       {
         method: 'POST',
         headers: {
           apikey: publicKey,
           Authorization: `Bearer ${publicKey}`,
           'Content-Type': 'application/json',
+          'Content-Profile': KEEPALIVE_SCHEMA,
         },
-        body: JSON.stringify({ query: KEEPALIVE_QUERY }),
+        body: '{}',
         signal: controller.signal,
       },
     );
@@ -51,9 +45,9 @@ export async function runSupabaseKeepalive(
       throw new Error(`Supabase keepalive failed with HTTP ${response.status}`);
     }
 
-    const payload = (await response.json()) as GraphqlResponse;
+    const payload: unknown = await response.json();
 
-    if (payload.errors?.length || payload.data?.__typename !== 'Query') {
+    if (payload !== true) {
       throw new Error('Supabase keepalive returned an unexpected response');
     }
   } finally {
